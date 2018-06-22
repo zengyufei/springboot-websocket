@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello WebSocket</title>
+    <script src="sockjs-0.3.4.js"></script>
+    <script src="stomp.js"></script>
+    <script type="text/javascript">
+
+
+        var send_message_uri_prefix = "/app";
+        var chat_connection_uri = "/chatIn";
+        var chat_send_message_uri = send_message_uri_prefix + chat_connection_uri;
+
+        var stompClient = null;
+        
+        function setConnected(connected) {
+            document.getElementById('conversationDiv').style.visibility = connected ? 'visible' : 'hidden';
+            document.getElementById('response').innerHTML = '';
+        }
+        
+        function connect() {
+            var socket = new SockJS(chat_connection_uri);
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function(frame) {
+                setConnected(true);
+                console.log('Connected: ' + frame);
+                // 订阅后台消息
+                stompClient.subscribe('/topic/chatOut', function(msg){
+                    showGreeting(JSON.parse(msg.body).message);
+                });
+            });
+        }
+        
+        function disconnect() {
+            if (stompClient != null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            console.log("Disconnected");
+        }
+        
+        function sendName() {
+            var msg = document.getElementById('msg').value;
+            stompClient.send(chat_send_message_uri, {}, JSON.stringify({ 'message': msg }));
+        }
+        
+        function showGreeting(message) {
+            var response = document.getElementById('response');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(message));
+            response.appendChild(p);
+        }
+
+        function setup(){
+            var inputBox = document.getElementById('msg');
+            // 监听回车键发送消息
+            inputBox.addEventListener('keypress', function(event) {
+                if (event.keyCode == 13) {
+                    sendName(); //发送消息
+                    inputBox.value = '';
+                }
+            });
+        }
+
+
+
+    </script>
+</head>
+<body onload="disconnect();connect();setup();" onunload="disconnect()">
+<div>
+    <div id="conversationDiv">
+        <input type="text" id="msg"/>
+        <p id="response"></p>
+    </div>
+</div>
+</body>
+</html>
